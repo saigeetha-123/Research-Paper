@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Paper Repository</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+
+            flex-wrap: wrap;
+        }
+
+        .column {
+            width: 30%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .paper-card {
+            background-color: white;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .paper-card:hover {
+            transform: scale(1.05);
+        }
+
+        h3 {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        p {
+            font-size: 14px;
+            color: gray;
+        }
+
+        button {
+            margin: 20px;
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        input[type="file"],
+        input[type="text"],
+        input[type="date"],
+        input[type="search"] {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        #viewer-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            width: 70%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        .close-popup {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        #search-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .filter-btn {
+            margin-left: 10px;
+            padding: 10px 15px;
+            background-color: #ddd;
+            border: 1px solid #bbb;
+            cursor: pointer;
+        }
+
+        .active-filter {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .add-btn {
+            font-size: 24px;
+            color: #4CAF50;
+            background-color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .add-btn:hover {
+            transform: scale(1.2);
+        }
+
+        #upload-form {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .search-bar {
+            width: 300px;
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #suggestions-list {
+            display: none;
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            background-color: white;
+            border: 1px solid #ddd;
+            max-height: 150px;
+            overflow-y: auto;
+            position: absolute;
+            width: 300px;
+            z-index: 99;
+        }
+
+        #suggestions-list li {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        #suggestions-list li:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body>
+
+    <h1>Research Paper Repository</h1>
+
+    <div id="search-container">
+        <input type="search" id="searchInput" class="search-bar" placeholder="Search..." onkeyup="handleSearch(event)" />
+        <button id="authorFilter" class="filter-btn active-filter" onclick="toggleFilter('author')">Authors</button>
+        <button id="titleFilter" class="filter-btn" onclick="toggleFilter('title')">PDF Titles</button>
+        <ul id="suggestions-list"></ul>
+    </div>
+
+    <div>
+        <button class="add-btn" onclick="toggleForm()">+</button>
+    </div>
+
+    <div id="upload-form">
+        <input type="file" id="input-file" accept=".pdf" multiple />
+        <input type="text" id="authorName" placeholder="Enter your name" />
+        <input type="date" id="uploadDate" />
+        <button onclick="handleFileSelect()">Upload Research Papers</button>
+    </div>
+
+    <div class="container">
+        <div class="column" id="paper-column-1"></div>
+        <div class="column" id="paper-column-2"></div>
+        <div class="column" id="paper-column-3"></div>
+    </div>
+
+    <!-- Popup for viewing PDF -->
+    <div id="viewer-popup">
+        <button class="close-popup" onclick="closePopup()">X</button>
+        <h1 id="popupTitle">PDF Title</h1>
+        <h4 id="popupAuthor">Author: </h4>
+        <iframe id="popupPdfViewer" src="" width="100%" height="500px"></iframe>
+    </div>
+
+    <script>
+        let paperCounter = 0;
+        let activeFilter = 'author'; // Default filter
+        const uploadedPapers = [];
+
+        function toggleForm() {
+            const form = document.getElementById('upload-form');
+            form.style.display = form.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function handleFileSelect() {
+            const fileInput = document.getElementById('input-file');
+            const authorNameInput = document.getElementById('authorName');
+            const uploadDateInput = document.getElementById('uploadDate');
+
+            const files = fileInput.files;
+            const authorName = authorNameInput.value;
+            const uploadDate = uploadDateInput.value;
+
+            if (!files.length || !authorName || !uploadDate) {
+                alert("Please select one or more PDF files, and enter your name and upload date.");
+                return;
+            }
+
+            Array.from(files).forEach(file => {
+                if (file.type === "application/pdf") {
+                    const pdfUrl = URL.createObjectURL(file);
+                    const uniqueId = paperCounter + 1;
+
+                    uploadedPapers.push({
+                        id: uniqueId,
+                        title: file.name,
+                        author: authorName,
+                        date: uploadDate,
+                        pdfUrl: pdfUrl
+                    });
+                    addPaperCard(file.name, authorName, uploadDate, pdfUrl);
+
+                    resetForm();
+                } else {
+                    alert("Please select a valid PDF file.");
+                }
+            });
+        }
+
+        function resetForm() {
+            document.getElementById('input-file').value = '';
+            document.getElementById('authorName').value = '';
+            document.getElementById('uploadDate').value = '';
+            document.getElementById('upload-form').style.display = 'none';
+        }
+
+        function addPaperCard(fileName, authorName, uploadDate, pdfUrl) {
+            const paperCard = document.createElement('div');
+            paperCard.classList.add('paper-card');
+
+            const titleElement = document.createElement('h3');
+            titleElement.textContent = fileName;
+            paperCard.appendChild(titleElement);
+
+            const infoElement = document.createElement('p');
+            infoElement.textContent = `Author: ${authorName} | Date: ${uploadDate}`;
+            paperCard.appendChild(infoElement);
+
+            paperCard.addEventListener('click', function() {
+                openPopup(fileName, authorName, pdfUrl);
+            });
+
+            const columns = document.querySelectorAll('.column');
+            const column = columns[paperCounter % 3];
+            column.appendChild(paperCard);
+
+            paperCounter++;
+        }
+
+        // Function to open the popup with PDF details
+        function openPopup(title, author, pdfUrl) {
+            document.getElementById('popupTitle').textContent = title;
+            document.getElementById('popupAuthor').textContent = `Author: ${author}`;
+            document.getElementById('popupPdfViewer').src = pdfUrl;
+            document.getElementById('viewer-popup').style.display = 'block';
+        }
+
+        function closePopup() {
+            document.getElementById('viewer-popup').style.display = 'none';
+        }
+
+        // Toggle between filters
+        function toggleFilter(filter) {
+            activeFilter = filter;
+            document.getElementById('authorFilter').classList.toggle('active-filter', filter === 'author');
+            document.getElementById('titleFilter').classList.toggle('active-filter', filter === 'title');
+            document.getElementById('suggestions-list').style.display = 'none'; // Hide suggestions when changing filter
+            document.getElementById('searchInput').value = ''; // Clear input field
+        }
+
+        // Handle the search input and display suggestions
+        function handleSearch(event) {
+            const query = event.target.value.toLowerCase();
+            const suggestionsList = document.getElementById('suggestions-list');
+            suggestionsList.innerHTML = ''; // Clear previous suggestions
+
+            if (query.length === 0) {
+                suggestionsList.style.display = 'none';
+                return; // Hide suggestions if input is empty
+            }
+
+            const suggestions = uploadedPapers.filter(paper => {
+                if (activeFilter === 'author') {
+                    return paper.author.toLowerCase().includes(query);
+                } else {
+                    return paper.title.toLowerCase().includes(query);
+                }
+            });
+
+            if (suggestions.length > 0) {
+                suggestions.forEach(paper => {
+                    const suggestionItem = document.createElement('li');
+                    suggestionItem.textContent = activeFilter === 'author' ? paper.author : paper.title;
+                    suggestionItem.addEventListener('click', () => {
+                        openPopup(paper.title, paper.author, paper.pdfUrl);
+                        suggestionsList.style.display = 'none'; // Hide suggestions after selection
+                    });
+                    suggestionsList.appendChild(suggestionItem);
+                });
+                suggestionsList.style.display = 'block'; // Show suggestions
+            } else {
+                suggestionsList.style.display = 'none'; // Hide suggestions if no matches
+            }
+        }
+    </script>
+</body>
+
+</html>
